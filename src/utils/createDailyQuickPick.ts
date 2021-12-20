@@ -17,7 +17,9 @@ const toOffsetLabel = (dayOffset: number) => {
   return `${dayOffset > 0 ? '+' : ''}${dayOffset} days`;
 };
 
-const yyyymmddRegExp = /([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))/;
+// const yyyymmddRegExp = /([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))/;
+const yyyymmddRegExp =
+  /(\d{4}-(0[1-9]|1[0-2])-((0[1-9]|[12][0-9]|3[01]))(_(Mon|Tue|Wed|Thu|Fri|Sat|Sun))?)/;
 
 const createDailyQuickPick = () => {
   const now = moment().startOf('day');
@@ -50,7 +52,8 @@ const createDailyQuickPick = () => {
 
   quickPick.items = dayOffsets.map((dayOffset) => {
     const date = now.clone().add(dayOffset, 'day');
-    const dateYYYYMMDD = date.format('YYYY-MM-DD');
+    // const dateYYYYMMDD = date.format('YYYY-MM-DD');
+    const dateYYYYMMDD = date.format('YYYY-MM-DD_ddd');
     const ref = findUriByRef(getWorkspaceCache().markdownUris, dateYYYYMMDD);
 
     return {
