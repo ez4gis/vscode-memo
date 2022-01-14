@@ -28,8 +28,8 @@ export default class BacklinksTreeDataProvider implements vscode.TreeDataProvide
   private _onDidChangeTreeData: vscode.EventEmitter<Backlink | undefined> = new vscode.EventEmitter<
     Backlink | undefined
   >();
-  readonly onDidChangeTreeData: vscode.Event<Backlink | undefined> = this._onDidChangeTreeData
-    .event;
+  readonly onDidChangeTreeData: vscode.Event<Backlink | undefined> =
+    this._onDidChangeTreeData.event;
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -103,11 +103,14 @@ export default class BacklinksTreeDataProvider implements vscode.TreeDataProvide
           referencesByPath[pathParam],
           collapsibleState,
         );
-        backlink.description = `(${referencesByPath[pathParam].length}) ${trimSlashes(
-          pathParam
-            .replace(workspaceFolder.uri.fsPath, '')
-            .replace(new RegExp(`${path.basename(pathParam)}$`), ''),
-        )}`;
+        backlink.description = [
+          `(${referencesByPath[pathParam].length})`,
+          trimSlashes(
+            pathParam.replace(workspaceFolder.uri.fsPath, '').replace(path.basename(pathParam), ''),
+          ).trim(),
+        ]
+          .filter(Boolean)
+          .join(' ');
         backlink.tooltip = pathParam;
         backlink.command = {
           command: 'vscode.open',

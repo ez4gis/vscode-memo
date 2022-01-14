@@ -3,11 +3,12 @@ import path from 'path';
 import { sort as sortPaths } from 'cross-path-sort';
 import fs from 'fs';
 
-import { WorkspaceCache, RefT, FoundRefT } from '../types';
+import { WorkspaceCache, RefT, FoundRefT, LinkRuleT } from '../types';
 import { isInCodeSpan, isInFencedCodeBlock } from './externalUtils';
 import { default as createDailyQuickPick } from './createDailyQuickPick';
+import { readClipboard } from './clipboardUtils';
 
-export { sortPaths, createDailyQuickPick };
+export { sortPaths, createDailyQuickPick, readClipboard };
 
 const markdownExtRegex = /\.md$/i;
 
@@ -244,11 +245,10 @@ export type MemoBoolConfigProp =
   | 'backlinksPanel.enabled'
   | 'markdownPreview.enabled';
 
-// absolute is alias of long, check this comment https://github.com/svsool/vscode-memo/pull/131#issuecomment-720277164
 export function getMemoConfigProperty(
   property: 'links.format',
   fallback: 'short',
-): 'short' | 'long' | 'absolute';
+): 'short' | 'long';
 
 export function getMemoConfigProperty(
   property: 'backlinksPanel.collapseParentItems',
@@ -259,6 +259,11 @@ export function getMemoConfigProperty(
   property: 'links.preview.imageMaxHeight',
   fallback: null | number,
 ): number;
+
+export function getMemoConfigProperty(
+  property: 'links.rules',
+  fallback: null | Array<LinkRuleT>,
+): LinkRuleT[];
 
 export function getMemoConfigProperty(property: MemoBoolConfigProp, fallback: boolean): boolean;
 
@@ -370,11 +375,15 @@ export const findReferences = async (
   return foundRefs;
 };
 
-export const getFileUrlForMarkdownPreview = (filePath: string): string =>
-  vscode.Uri.file(filePath).toString().replace('file://', '');
+export const getFileUrlForMarkdownPreview = (filePathParam: string): string => {
+  const workspaceFolder = getWorkspaceFolder();
+  const filePath = workspaceFolder ? filePathParam.replace(workspaceFolder, '') : filePathParam;
+
+  return vscode.Uri.file(filePath).toString().replace('file://', '');
+};
 
 export const getImgUrlForMarkdownPreview = (imagePath: string): string =>
-  `vscode-resource://${vscode.Uri.file(imagePath).toString().replace('file:', 'file')}`;
+  vscode.Uri.file(imagePath).toString().replace('file://', '');
 
 const uncPathRegex = /^[\\\/]{2,}[^\\\/]+[\\\/]+[^\\\/]+/;
 
@@ -404,7 +413,13 @@ export const findUriByRef = (uris: vscode.Uri[], ref: string): vscode.Uri | unde
 
     if (containsImageExt(ref) || containsOtherKnownExts(ref) || containsUnknownExt(ref)) {
       if (isLongRef(ref)) {
-        return normalizeSlashes(relativeFsPath).endsWith(ref.toLowerCase());
+        const relativeFsPathNormalized = normalizeSlashes(relativeFsPath);
+        const refLowerCased = ref.toLowerCase();
+
+        return (
+          relativeFsPathNormalized.endsWith(refLowerCased) ||
+          relativeFsPathNormalized.endsWith(`${refLowerCased}.md`)
+        );
       }
 
       const basenameLowerCased = path.basename(uri.fsPath).toLowerCase();
@@ -432,12 +447,21 @@ export const ensureDirectoryExists = (filePath: string) => {
   }
 };
 
-export const getRefUriUnderCursor = (): vscode.Uri | null | undefined => {
+export const getRefUnderCursor = ():
+  | { range: vscode.Range; ref: string; label: string }
+  | null
+  | undefined => {
   const activeTextEditor = vscode.window.activeTextEditor;
 
   const refAtPos =
     activeTextEditor &&
     getReferenceAtPosition(activeTextEditor.document, activeTextEditor.selection.start);
+
+  return refAtPos;
+};
+
+export const getRefUriUnderCursor = (): vscode.Uri | null | undefined => {
+  const refAtPos = getRefUnderCursor();
 
   return refAtPos && findUriByRef(getWorkspaceCache().allUris, refAtPos.ref);
 };
@@ -529,6 +553,86 @@ export const findNonIgnoredFiles = async (
   const files = await workspace.findFiles(include, `{${exclude}}`, maxResults, token);
 
   return files;
+};
+
+export const getRefWithExt = (ref: string) => {
+  const paths = ref.split('/');
+  const refExt = path.parse(ref).ext;
+
+  return path.join(
+    ...paths.slice(0, -1),
+    `${paths.slice(-1)}${refExt !== '.md' && refExt !== '' ? '' : '.md'}`,
+  );
+};
+
+export const getDirRelativeToWorkspace = (uri: Uri | undefined) => {
+  const workspaceFolder = uri && workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+
+  if (!workspaceFolder || !uri) {
+    return;
+  }
+
+  return path.dirname(uri.fsPath).replace(workspaceFolder, '');
+};
+
+export const resolveShortRefFolder = (ref: string): string | undefined => {
+  const linksFormat = getMemoConfigProperty('links.format', 'short');
+  const linksRules = getMemoConfigProperty('links.rules', []);
+  const refWithExt = getRefWithExt(ref);
+
+  if (linksFormat !== 'short' || isLongRef(ref) || !Array.isArray(linksRules)) {
+    return;
+  }
+
+  let linkRegExpMatchArr: RegExpMatchArray | null = null;
+  let linkRule: LinkRuleT | null = null;
+
+  for (const rule of linksRules) {
+    const matchRes = new RegExp(rule.rule).exec(refWithExt);
+
+    if (matchRes) {
+      linkRegExpMatchArr = matchRes;
+      linkRule = rule;
+
+      break;
+    }
+  }
+
+  if (!linkRule) {
+    return;
+  }
+
+  const date = new Date();
+
+  // https://github.com/microsoft/vscode/blob/main/src/vs/editor/contrib/snippet/snippetVariables.ts
+  const varsReplacementMap: { [varName: string]: string } = {
+    $CURRENT_FILE_DIRECTORY:
+      getDirRelativeToWorkspace(vscode.window.activeTextEditor?.document.uri) || '',
+    $CURRENT_YEAR: String(date.getFullYear()),
+    $CURRENT_YEAR_SHORT: String(date.getFullYear()).slice(-2),
+    $CURRENT_MONTH: String(date.getMonth().valueOf() + 1).padStart(2, '0'),
+    $CURRENT_DATE: String(date.getDate().valueOf()).padStart(2, '0'),
+    $CURRENT_HOUR: String(date.getHours().valueOf()).padStart(2, '0'),
+    $CURRENT_MINUTE: String(date.getMinutes().valueOf()).padStart(2, '0'),
+    $CURRENT_SECOND: String(date.getSeconds().valueOf()).padStart(2, '0'),
+    $CURRENT_SECONDS_UNIX: String(Math.floor(date.getTime() / 1000)),
+  };
+
+  if (linkRegExpMatchArr) {
+    linkRegExpMatchArr.forEach((match, index) => {
+      varsReplacementMap[`$${index}`] = match;
+    });
+  }
+
+  let folder = linkRule.folder;
+
+  for (const varName of Object.keys(varsReplacementMap)) {
+    const varVal = varsReplacementMap[varName];
+
+    folder = folder.replace(new RegExp(escapeForRegExp(varName), 'g'), varVal);
+  }
+
+  return folder;
 };
 
 export const isDefined = <T>(argument: T | undefined): argument is T => argument !== undefined;

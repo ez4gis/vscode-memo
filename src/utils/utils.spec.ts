@@ -52,6 +52,7 @@ import {
   trimLeadingSlash,
   trimSlashes,
   trimTrailingSlash,
+  getDirRelativeToWorkspace,
 } from './utils';
 
 describe('containsImageExt()', () => {
@@ -547,7 +548,7 @@ describe('getRefUriUnderCursor()', () => {
 
 describe('parseRef()', () => {
   it('should fail on providing wrong parameter type', () => {
-    expect(() => parseRef((undefined as unknown) as string)).toThrow();
+    expect(() => parseRef(undefined as unknown as string)).toThrow();
   });
 
   it('should return empty ref and label', () => {
@@ -976,6 +977,60 @@ describe('getReferenceAtPosition()', () => {
       }
     `);
   });
+
+  it('should get reference at position for a short link with dots', async () => {
+    expect(
+      getReferenceAtPosition(
+        await workspace.openTextDocument({
+          language: 'markdown',
+          content: '![[test-v1.1.0]]',
+        }),
+        new Position(0, 4),
+      ),
+    ).toMatchInlineSnapshot(`
+      Object {
+        "label": "",
+        "range": Array [
+          Object {
+            "character": 1,
+            "line": 0,
+          },
+          Object {
+            "character": 16,
+            "line": 0,
+          },
+        ],
+        "ref": "test-v1.1.0",
+      }
+    `);
+  });
+
+  it('should get reference at position for a long link with dots', async () => {
+    expect(
+      getReferenceAtPosition(
+        await workspace.openTextDocument({
+          language: 'markdown',
+          content: '![[test/test-v1.1.0]]',
+        }),
+        new Position(0, 4),
+      ),
+    ).toMatchInlineSnapshot(`
+      Object {
+        "label": "",
+        "range": Array [
+          Object {
+            "character": 1,
+            "line": 0,
+          },
+          Object {
+            "character": 21,
+            "line": 0,
+          },
+        ],
+        "ref": "test/test-v1.1.0",
+      }
+    `);
+  });
 });
 
 describe('escapeForRegExp()', () => {
@@ -1197,7 +1252,7 @@ describe('getFileUrlForMarkdownPreview()', () => {
 describe('getImgUrlForMarkdownPreview()', () => {
   it('should get img url for markdown preview', () => {
     expect(getImgUrlForMarkdownPreview('/Users/Memo/Diary/image.png')).toBe(
-      'vscode-resource://file///Users/Memo/Diary/image.png',
+      '/Users/Memo/Diary/image.png',
     );
   });
 });
@@ -1492,6 +1547,36 @@ describe('findUriByRef()', () => {
       toPlainObject(await findUriByRef([Uri.file('/Users/Memo/Diary/.md')], '.md')),
     ).toBeUndefined();
   });
+
+  it('should find uri by ref for a short link with dots', async () => {
+    expect(
+      toPlainObject(
+        await findUriByRef([Uri.file('/Users/Memo/Diary/test/test-v1.1.0.md')], 'test-v1.1.0'),
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        $mid: 1,
+        fsPath: expect.toEndWith('test-v1.1.0.md'),
+        path: expect.toEndWith('test-v1.1.0.md'),
+        scheme: 'file',
+      }),
+    );
+  });
+
+  it('should find uri by ref for a long link with dots', async () => {
+    expect(
+      toPlainObject(
+        await findUriByRef([Uri.file('/Users/Memo/Diary/test/test-v1.1.0.md')], 'test/test-v1.1.0'),
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        $mid: 1,
+        fsPath: expect.toEndWith('test-v1.1.0.md'),
+        path: expect.toEndWith('test-v1.1.0.md'),
+        scheme: 'file',
+      }),
+    );
+  });
 });
 
 describe('ensureDirectoryExists()', () => {
@@ -1611,7 +1696,6 @@ describe('findNonIgnoredFiles()', () => {
 
   it('should find non-ignored files', async () => {
     const prevConfig = getConfigProperty('search.exclude', {});
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     await updateConfigProperty('search.exclude', { '**/search-ignored': true });
 
     const allowedName = rndName();
@@ -1646,7 +1730,6 @@ describe('findNonIgnoredFiles()', () => {
   describe('when exclude param passed explicitly and search.exclude set', () => {
     it('should find non-ignored files', async () => {
       const prevConfig = getConfigProperty('search.exclude', {});
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       await updateConfigProperty('search.exclude', { '**/search-ignored': true });
 
       const allowedName = rndName();
@@ -1663,5 +1746,17 @@ describe('findNonIgnoredFiles()', () => {
 
       await updateConfigProperty('search.exclude', prevConfig);
     });
+  });
+});
+
+describe('getDirRelativeToWorkspace()', () => {
+  it('should get directory relative to workspace', async () => {
+    const dir1 = rndName();
+    const dir2 = rndName();
+    const name1 = rndName();
+
+    const uri = await createFile(`/${dir1}/${dir2}/${name1}.md`);
+
+    expect(getDirRelativeToWorkspace(uri)).toBe(path.join('/', dir1, dir2));
   });
 });

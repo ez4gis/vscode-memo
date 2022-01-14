@@ -2,6 +2,113 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.17](https://github.com/svsool/vscode-memo/compare/v0.3.16...v0.3.17) (2022-01-08)
+
+
+### Features
+
+* Use rigrep to speed up refs rename ([#286](https://github.com/svsool/vscode-memo/issues/286)) ([284d06f](https://github.com/svsool/vscode-memo/commit/284d06f3f4eb673e47f767aa212c2e26b277e839))
+
+### [0.3.16](https://github.com/svsool/vscode-memo/compare/v0.3.15...v0.3.16) (2021-12-19)
+
+
+### Features
+
+* Support vars and capturing group in link rules ([#469](https://github.com/svsool/vscode-memo/issues/469)) ([259ba76](https://github.com/svsool/vscode-memo/commit/259ba767bd74240501e448fb13f37c9318b949ee))
+
+### [0.3.15](https://github.com/svsool/vscode-memo/compare/v0.3.14...v0.3.15) (2021-12-18)
+
+
+### Bug Fixes
+
+* Fix "Paste HTML as Markdown" command ([8c324f8](https://github.com/svsool/vscode-memo/commit/8c324f88b004c987b0b3ea814f4c19c4770a1399))
+
+### [0.3.14](https://github.com/svsool/vscode-memo/compare/v0.3.13...v0.3.14) (2021-12-18)
+
+
+### Bug Fixes
+
+* Disable "Paste HTML as Markdown" command until fixed ([45c4e1d](https://github.com/svsool/vscode-memo/commit/45c4e1d142519273df82c9feffb0254f221f1074))
+
+### [0.3.13](https://github.com/svsool/vscode-memo/compare/v0.3.12...v0.3.13) (2021-12-18)
+
+
+### Features
+
+* Add "Extract range to a new note" command ([da3074a](https://github.com/svsool/vscode-memo/commit/da3074a11a21144812b3c735f6b77170067f171b))
+* Add "Paste HTML as Markdown" command ([501b48b](https://github.com/svsool/vscode-memo/commit/501b48bb0da6154d462e10c87384e7d07e85e4f2))
+
+### [0.3.12](https://github.com/svsool/vscode-memo/compare/v0.3.11...v0.3.12) (2021-12-18)
+
+### [0.3.11](https://github.com/svsool/vscode-memo/compare/v0.3.10...v0.3.11) (2021-12-18)
+
+
+### Features
+
+* **completion:** Add note and images preview to the link completion popup ([#472](https://github.com/svsool/vscode-memo/issues/472)) ([92a16bd](https://github.com/svsool/vscode-memo/commit/92a16bd70c5ebc78bdfc19e4c9fa3ebfe223d0a6))
+
+### [0.3.10](https://github.com/svsool/vscode-memo/compare/v0.3.9...v0.3.10) (2021-12-12)
+
+
+### Bug Fixes
+
+* Fix links in markdown preview ([#481](https://github.com/svsool/vscode-memo/issues/481)) ([0c2cb34](https://github.com/svsool/vscode-memo/commit/0c2cb348d5001855cb910998e51df36aeee4b325))
+
+### [0.3.9](https://github.com/svsool/vscode-memo/compare/v0.3.8...v0.3.9) (2021-06-19)
+
+
+### Features
+
+* Support configurable location for creating notes ([#331](https://github.com/svsool/vscode-memo/pull/331))
+
+### Bug Fixes
+
+* Fix links in markdown preview in the latest vscode ([#367](https://github.com/svsool/vscode-memo/issues/367), [#401](https://github.com/svsool/vscode-memo/issues/401)) ([4c3f630](https://github.com/svsool/vscode-memo/commit/4c3f630481d6c606810e098536aadba411f38433))
+
+### [0.3.8](https://github.com/svsool/vscode-memo/compare/v0.3.7...v0.3.8) (2021-04-30)
+
+### [0.3.7](https://github.com/svsool/vscode-memo/compare/v0.3.6...v0.3.7) (2021-04-27)
+
+
+### Bug Fixes
+
+* Fix findUriByRef for long links with dots ([#346](https://github.com/svsool/vscode-memo/issues/346), [#339](https://github.com/svsool/vscode-memo/issues/339)) ([6ec7cca](https://github.com/svsool/vscode-memo/commit/6ec7ccaad17cf5e2686d61f1ed3c49d5d53043d2))
+
+### [0.3.6](https://github.com/svsool/vscode-memo/compare/v0.3.5...v0.3.6) (2021-04-24)
+
+### [0.3.5](https://github.com/svsool/vscode-memo/compare/v0.3.4...v0.3.5) (2021-04-24)
+
+
+### Bug Fixes
+
+* Re-enable image preview on hover in latest vscode versions ([abce6b9](https://github.com/svsool/vscode-memo/commit/abce6b9858d1336516385e2a4fc1e88940be6168))
+
+### [0.3.4](https://github.com/svsool/vscode-memo/compare/v0.3.3...v0.3.4) (2021-03-20)
+
+
+### Bug Fixes
+
+* Add a note about degraded experience on image hover with vscode 1.53/1.54 ([cd085f9](https://github.com/svsool/vscode-memo/commit/cd085f935ce36cb91a4f58dd5d373d17004dec31))
+* Fix backlink error when filenames contain regex symbols ([06bd81d](https://github.com/svsool/vscode-memo/commit/06bd81db9ddf4547654a88b2de2a850be302773e))
+* Make follow link to work with vscode 1.53/1.54 ([b60258e](https://github.com/svsool/vscode-memo/commit/b60258eff4ab54cf7d1d59f6f6cb8f2025083e83))
+
+### [0.3.3](https://github.com/svsool/vscode-memo/compare/v0.3.2...v0.3.3) (2021-01-24)
+
+
+### Features
+
+* Add context menu "Open menu to the side" ([618eadd](https://github.com/svsool/vscode-memo/commit/618eadd1e2c09af0470dd9c3612f241234679c85))
+* Add memo:refFocusedOrHovered ([9ce62a6](https://github.com/svsool/vscode-memo/commit/9ce62a6b6d1bf619eb1cd9dff33c5bcb1d5b83d5))
+* open link in adjacent/new editor column ([#81](https://github.com/svsool/vscode-memo/issues/81)) ([8c9c260](https://github.com/svsool/vscode-memo/commit/8c9c260d136a0d900ff223ad18ffb61cd5fe398a))
+
+
+### Bug Fixes
+
+* add showOption ([c1d3066](https://github.com/svsool/vscode-memo/commit/c1d3066c349037497efdadc33f1546d18c899e32))
+* eslint error "Delete `CR` on Windows ([7cfad0f](https://github.com/svsool/vscode-memo/commit/7cfad0f46aa5b4cbaa0494c33271625495b6ea3e))
+* Fix tests for openReferenceBeside ([1050a94](https://github.com/svsool/vscode-memo/commit/1050a9416023620d1a0905c9b31fb2d3baed5fee))
+* remove space ([4945f95](https://github.com/svsool/vscode-memo/commit/4945f95187cbb91167ad2fa10852b75a6e39fd38))
+
 ### [0.3.1](https://github.com/svsool/vscode-memo/compare/v0.3.0...v0.3.1) (2020-12-06)
 
 

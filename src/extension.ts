@@ -12,8 +12,10 @@ import {
   BacklinksTreeDataProvider,
   extendMarkdownIt,
   newVersionNotifier,
+  codeActionProvider,
 } from './features';
 import commands from './commands';
+import logger from './logger';
 import { cacheWorkspace, getMemoConfigProperty, MemoBoolConfigProp, isDefined } from './utils';
 
 const mdLangSelector = { language: 'markdown', scheme: '*' };
@@ -38,8 +40,11 @@ export const activate = async (
 
   await cacheWorkspace();
 
+  context.subscriptions.push(logger.logger);
+
   context.subscriptions.push(
     ...commands,
+    vscode.languages.registerCodeActionsProvider(mdLangSelector, codeActionProvider),
     vscode.workspace.onDidChangeConfiguration(async (configChangeEvent) => {
       if (configChangeEvent.affectsConfiguration('search.exclude')) {
         await cacheWorkspace();
@@ -80,6 +85,8 @@ export const activate = async (
       }),
     );
   });
+
+  logger.info('Memo extension successfully initialized! 🎉');
 
   return when('markdownPreview.enabled', () => ({
     extendMarkdownIt,

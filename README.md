@@ -5,6 +5,7 @@ Markdown knowledge base with bidirectional [[link]]s built on top of [VSCode](ht
 Inspired by [Obsidian.md](https://obsidian.md/) and [RoamResearch](https://roamresearch.com/).
 
 [![](https://vsmarketplacebadge.apphb.com/version-short/svsool.markdown-memo.svg)](https://marketplace.visualstudio.com/items?itemName=svsool.markdown-memo)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/svsool/markdown-memo?color=salad&label=Open%20VSX)](https://open-vsx.org/extension/svsool/markdown-memo)
 [![](https://vsmarketplacebadge.apphb.com/installs/svsool.markdown-memo.svg)](https://marketplace.visualstudio.com/items?itemName=svsool.markdown-memo)
 [![](https://vsmarketplacebadge.apphb.com/rating-short/svsool.markdown-memo.svg)](https://marketplace.visualstudio.com/items?itemName=svsool.markdown-memo&ssr=false#review-details)
 [![](https://github.com/svsool/vscode-memo/workflows/CI/badge.svg?branch=master)](https://github.com/svsool/vscode-memo/actions?query=workflow%3ACI+branch%3Amaster)
@@ -75,6 +76,8 @@ If you want to try out Memo just install it via marketplace using [this link](ht
 
   - "Open link" command support for links following
 
+  - "Open link to the side" command allows you to open link in the adjacent/new column of the editor
+
   - "Open daily note" command which creates a note with a title in `yyyy-mm-dd` format or opens already existing one
 
     - ![Open daily note command](./help/Attachments/Open%20daily%20note.gif)
@@ -85,7 +88,13 @@ If you want to try out Memo just install it via marketplace using [this link](ht
 
   - "Open link in the default app" command for opening unsupported file formats in the system default app
 
+  - "Paste HTML as Markdown" command which can partially replace a web clipper functionality
+
+    - ![Paste HTML as Markdown](./help/Attachments/Paste%20HTML%20as%20Markdown.gif)
+
   - "Rename Symbol" command support for renaming links right in the editor
+
+  - "Extract range to a new note" command to ease notes refactoring
 
 ## FAQ
 
@@ -94,7 +103,6 @@ If you want to try out Memo just install it via marketplace using [this link](ht
 - How to follow link on `cmd+enter` or `ctrl+enter` like in Obsidian?
   - Bind built-in `editor.action.openLink` command to `cmd+enter` ([see example](https://github.com/svsool/vscode-memo/issues/2#issuecomment-654981827)) or use `cmd+click` on the link
 - [Pasting images from clipboard](./help/How%20to/Pasting%20images%20from%20clipboard.md)
-- [Pasting HTML as Markdown](./help/How%20to/Pasting%20HTML%20as%20Markdown.md)
 - Memo missing some feature? Please consider exploring other Markdown plugins from VS Marketplace first. There are [plenty of them](https://marketplace.visualstudio.com/search?term=markdown&target=VSCode&category=All%20categories&sortBy=Relevance).
 
 ## Contributing
