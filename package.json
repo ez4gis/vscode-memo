@@ -284,7 +284,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "glob": "^7.2.0",
     "husky": "^7.0.4",
-    "jest": "^27.4.5",
+    "jest": "^27.4.7",
     "jest-environment-vscode": "^1.0.0",
     "jest-extended": "^1.2.0",
     "lint-staged": "^12.1.3",
