@@ -3,7 +3,8 @@ import range from 'lodash.range';
 import path from 'path';
 import { window } from 'vscode';
 
-import { findUriByRef, getWorkspaceCache } from './utils';
+import { findUriByRef } from './utils';
+import { cache } from '../workspace';
 
 const toOffsetLabel = (dayOffset: number) => {
   if (dayOffset === -1) {
@@ -23,7 +24,8 @@ const yyyymmddRegExp =
 
 const createDailyQuickPick = () => {
   const now = moment().startOf('day');
-  const allDailyDates = getWorkspaceCache()
+  const allDailyDates = cache
+    .getWorkspaceCache()
     .markdownUris.map((uri) => path.parse(uri.fsPath).name)
     .filter((name) => yyyymmddRegExp.exec(name) && moment(name).isValid());
   const existingDayOffsets = allDailyDates.map((dateStr) =>
@@ -54,7 +56,7 @@ const createDailyQuickPick = () => {
     const date = now.clone().add(dayOffset, 'day');
     // const dateYYYYMMDD = date.format('YYYY-MM-DD');
     const dateYYYYMMDD = date.format('YYYY-MM-DD_ddd');
-    const ref = findUriByRef(getWorkspaceCache().markdownUris, dateYYYYMMDD);
+    const ref = findUriByRef(cache.getWorkspaceCache().markdownUris, dateYYYYMMDD);
 
     return {
       label: `${ref ? '✓' : '✕'} ${toOffsetLabel(dayOffset)} | ${date.format(

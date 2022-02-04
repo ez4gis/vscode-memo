@@ -2,22 +2,8 @@ import { Position, Range, Selection, Uri, window, workspace } from 'vscode';
 import fs from 'fs';
 import path from 'path';
 
-import {
-  cleanWorkspace,
-  closeEditorsAndCleanWorkspace,
-  createFile,
-  openTextDocument,
-  rndName,
-  toPlainObject,
-  updateConfigProperty,
-} from '../test/testUtils';
 import * as utils from './utils';
 import {
-  addCachedRefs,
-  cacheRefs,
-  cacheUris,
-  cacheWorkspace,
-  cleanWorkspaceCache,
   containsImageExt,
   containsMarkdownExt,
   containsOtherKnownExts,
@@ -40,20 +26,27 @@ import {
   getMemoConfigProperty,
   getReferenceAtPosition,
   getRefUriUnderCursor,
-  getWorkspaceCache,
   getWorkspaceFolder,
   isLongRef,
   isUncPath,
   matchAll,
   normalizeSlashes,
   parseRef,
-  removeCachedRefs,
-  replaceRefs,
   trimLeadingSlash,
   trimSlashes,
   trimTrailingSlash,
   getDirRelativeToWorkspace,
+  extractRefsFromText,
 } from './utils';
+import { cache } from '../workspace';
+import {
+  closeEditorsAndCleanWorkspace,
+  createFile,
+  openTextDocument,
+  rndName,
+  toPlainObject,
+  updateConfigProperty,
+} from '../test/utils';
 
 describe('containsImageExt()', () => {
   test.each(['png', 'jpg', 'jpeg', 'gif'])(
@@ -187,329 +180,6 @@ describe('fsPathToRef()', () => {
   });
 });
 
-describe('cacheWorkspace()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should work with empty workspace', async () => {
-    await cacheWorkspace();
-
-    expect([...getWorkspaceCache().markdownUris, ...getWorkspaceCache().imageUris]).toHaveLength(0);
-  });
-
-  it('should cache workspace', async () => {
-    const noteFilename = `${rndName()}.md`;
-    const imageFilename = `${rndName()}.png`;
-    const otherFilename = `${rndName()}.txt`;
-
-    await createFile(
-      noteFilename,
-      `
-    [[dangling-ref]]
-    [[dangling-ref]]
-    [[dangling-ref2|Test Label]]
-    [[folder1/long-dangling-ref]]
-    ![[dangling-ref3]]
-    \`[[dangling-ref-within-code-span]]\`
-    \`\`\`
-    Preceding text
-    [[dangling-ref-within-fenced-code-block]]
-    Following text
-    \`\`\`
-    [[${imageFilename}]]
-    `,
-      false,
-    );
-    await createFile(imageFilename, '', false);
-    await createFile(otherFilename, '', false);
-
-    await cacheWorkspace();
-
-    expect(
-      [
-        ...getWorkspaceCache().markdownUris,
-        ...getWorkspaceCache().imageUris,
-        ...getWorkspaceCache().otherUris,
-      ].map(({ fsPath }) => path.basename(fsPath)),
-    ).toEqual([noteFilename, imageFilename, otherFilename]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([
-      ['dangling-ref', 'dangling-ref2', 'folder1/long-dangling-ref', 'dangling-ref3'],
-    ]);
-    expect(getWorkspaceCache().danglingRefs).toEqual([
-      'dangling-ref',
-      'dangling-ref2',
-      'dangling-ref3',
-      'folder1/long-dangling-ref',
-    ]);
-  });
-});
-
-describe('cacheUris()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should work with empty workspace', async () => {
-    await cacheUris();
-
-    expect([...getWorkspaceCache().markdownUris, ...getWorkspaceCache().imageUris]).toHaveLength(0);
-  });
-
-  it('should cache uris', async () => {
-    const noteFilename = `${rndName()}.md`;
-    const imageFilename = `${rndName()}.png`;
-    const otherFilename = `${rndName()}.txt`;
-
-    await createFile(noteFilename, ``, false);
-    await createFile(imageFilename, '', false);
-    await createFile(otherFilename, '', false);
-
-    await cacheUris();
-
-    expect(
-      [
-        ...getWorkspaceCache().markdownUris,
-        ...getWorkspaceCache().imageUris,
-        ...getWorkspaceCache().otherUris,
-      ].map(({ fsPath }) => path.basename(fsPath)),
-    ).toEqual([noteFilename, imageFilename, otherFilename]);
-  });
-});
-
-describe('cacheRefs()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should work with empty workspace', async () => {
-    await cacheRefs();
-
-    expect(getWorkspaceCache().danglingRefsByFsPath).toEqual({});
-    expect(getWorkspaceCache().danglingRefs).toEqual([]);
-  });
-
-  it('should cache refs', async () => {
-    const noteFilename = `${rndName()}.md`;
-    const imageFilename = `${rndName()}.png`;
-
-    await createFile(
-      noteFilename,
-      `
-    [[dangling-ref]]
-    [[dangling-ref]]
-    [[dangling-ref2|Test Label]]
-    [[folder1/long-dangling-ref]]
-    ![[dangling-ref3]]
-    \`[[dangling-ref-within-code-span]]\`
-    \`\`\`
-    Preceding text
-    [[dangling-ref-within-fenced-code-block]]
-    Following text
-    \`\`\`
-    [[${imageFilename}]]
-    `,
-    );
-    await createFile(imageFilename);
-
-    await cacheRefs();
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([
-      ['dangling-ref', 'dangling-ref2', 'folder1/long-dangling-ref', 'dangling-ref3'],
-    ]);
-    expect(getWorkspaceCache().danglingRefs).toEqual([
-      'dangling-ref',
-      'dangling-ref2',
-      'dangling-ref3',
-      'folder1/long-dangling-ref',
-    ]);
-
-    cleanWorkspaceCache();
-
-    expect(getWorkspaceCache().danglingRefsByFsPath).toEqual({});
-    expect(getWorkspaceCache().danglingRefs).toEqual([]);
-  });
-});
-
-describe('addCachedRefs', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should not fail without parameters', () => {
-    expect(addCachedRefs([])).resolves.toBeUndefined();
-  });
-
-  it('should not fail with non-existing uri', () => {
-    expect(addCachedRefs([Uri.file('/unknown')])).resolves.toBeUndefined();
-  });
-
-  it('should add cached refs', async () => {
-    const name = rndName();
-
-    expect(getWorkspaceCache().danglingRefsByFsPath).toEqual({});
-    expect(getWorkspaceCache().danglingRefs).toEqual([]);
-
-    await createFile(`${name}.md`, '[[dangling-ref]]');
-
-    await addCachedRefs([Uri.file(path.join(getWorkspaceFolder()!, `${name}.md`))]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([['dangling-ref']]);
-    expect(getWorkspaceCache().danglingRefs).toEqual(['dangling-ref']);
-  });
-
-  it('should add cached refs on top of existing', async () => {
-    const name = rndName();
-
-    await createFile(`${name}.md`, '[[dangling-ref]]');
-
-    await addCachedRefs([Uri.file(path.join(getWorkspaceFolder()!, `${name}.md`))]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([['dangling-ref']]);
-    expect(getWorkspaceCache().danglingRefs).toEqual(['dangling-ref']);
-
-    await createFile(`${name}.md`, '[[dangling-ref]] [[dangling-ref2]]');
-
-    await addCachedRefs([Uri.file(path.join(getWorkspaceFolder()!, `${name}.md`))]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([
-      ['dangling-ref', 'dangling-ref2'],
-    ]);
-    expect(getWorkspaceCache().danglingRefs).toEqual(['dangling-ref', 'dangling-ref2']);
-  });
-});
-
-describe('removeCachedRefs()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should not fail with non-existing uri', () => {
-    expect(() => removeCachedRefs([])).not.toThrow();
-  });
-
-  it('should not fail if there is nothing to remove', () => {
-    expect(() => removeCachedRefs([Uri.file('/unknown')])).not.toThrow();
-  });
-
-  it('should remove cached refs', async () => {
-    const name = rndName();
-
-    await createFile(`${name}.md`, '[[dangling-ref]]');
-
-    await addCachedRefs([Uri.file(path.join(getWorkspaceFolder()!, `${name}.md`))]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([['dangling-ref']]);
-    expect(getWorkspaceCache().danglingRefs).toEqual(['dangling-ref']);
-
-    await removeCachedRefs([Uri.file(path.join(getWorkspaceFolder()!, `${name}.md`))]);
-
-    expect(getWorkspaceCache().danglingRefsByFsPath).toEqual({});
-    expect(getWorkspaceCache().danglingRefs).toEqual([]);
-  });
-});
-
-describe('cleanWorkspaceCache()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should work with empty workspace', async () => {
-    await cleanWorkspaceCache();
-
-    expect([
-      ...getWorkspaceCache().markdownUris,
-      ...getWorkspaceCache().imageUris,
-      ...getWorkspaceCache().otherUris,
-    ]).toHaveLength(0);
-  });
-
-  it('should clean workspace cache', async () => {
-    const noteFilename = `${rndName()}.md`;
-    const imageFilename = `${rndName()}.png`;
-    const otherFilename = `${rndName()}.txt`;
-
-    await createFile(
-      noteFilename,
-      `
-    [[dangling-ref]]
-    [[dangling-ref]]
-    [[dangling-ref2|Test Label]]
-    [[folder1/long-dangling-ref]]
-    ![[dangling-ref3]]
-    \`[[dangling-ref-within-code-span]]\`
-    \`\`\`
-    Preceding text
-    [[dangling-ref-within-fenced-code-block]]
-    Following text
-    \`\`\`
-    [[${imageFilename}]]
-    `,
-    );
-    await createFile(imageFilename);
-    await createFile(otherFilename);
-
-    await cacheWorkspace();
-
-    expect(
-      [
-        ...getWorkspaceCache().markdownUris,
-        ...getWorkspaceCache().imageUris,
-        ...getWorkspaceCache().otherUris,
-      ].map(({ fsPath }) => path.basename(fsPath)),
-    ).toEqual([noteFilename, imageFilename, otherFilename]);
-
-    expect(Object.values(getWorkspaceCache().danglingRefsByFsPath)).toEqual([
-      ['dangling-ref', 'dangling-ref2', 'folder1/long-dangling-ref', 'dangling-ref3'],
-    ]);
-    expect(getWorkspaceCache().danglingRefs).toEqual([
-      'dangling-ref',
-      'dangling-ref2',
-      'dangling-ref3',
-      'folder1/long-dangling-ref',
-    ]);
-
-    cleanWorkspaceCache();
-
-    expect([
-      ...getWorkspaceCache().markdownUris,
-      ...getWorkspaceCache().imageUris,
-      ...getWorkspaceCache().otherUris,
-    ]).toHaveLength(0);
-    expect(getWorkspaceCache().danglingRefsByFsPath).toEqual({});
-    expect(getWorkspaceCache().danglingRefs).toEqual([]);
-  });
-});
-
-describe('getWorkspaceCache()', () => {
-  beforeEach(closeEditorsAndCleanWorkspace);
-
-  afterEach(closeEditorsAndCleanWorkspace);
-
-  it('should work with empty workspace', () => {
-    cleanWorkspace();
-    cleanWorkspaceCache();
-
-    expect([...getWorkspaceCache().markdownUris, ...getWorkspaceCache().imageUris]).toHaveLength(0);
-  });
-
-  it('should get workspace cache', async () => {
-    const noteFilename = `${rndName()}.md`;
-    const imageFilename = `${rndName()}.png`;
-
-    await createFile(noteFilename);
-    await createFile(imageFilename);
-
-    await cacheWorkspace();
-
-    const uris = [...getWorkspaceCache().markdownUris, ...getWorkspaceCache().imageUris];
-
-    expect(uris).toHaveLength(2);
-    expect(uris.map(({ fsPath }) => path.basename(fsPath))).toEqual([noteFilename, imageFilename]);
-  });
-});
-
 describe('getRefUriUnderCursor()', () => {
   beforeEach(closeEditorsAndCleanWorkspace);
 
@@ -565,222 +235,6 @@ describe('parseRef()', () => {
 
   it('should ignore escape symbol', () => {
     expect(parseRef('link\\|Label')).toEqual({ ref: 'link', label: 'Label' });
-  });
-});
-
-describe('replaceRefs()', () => {
-  it('should return null if nothing to replace', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[some-ref]]',
-        }),
-      }),
-    ).toBe(null);
-  });
-
-  it('should replace short ref with short ref', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref]]');
-  });
-
-  it('should replace short ref with label with short ref with label', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref|Test Label]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref|Test Label]]');
-  });
-
-  it('should replace long ref with long ref', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref', new: 'folder1/new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref]]',
-        }),
-      }),
-    ).toBe('[[folder1/new-test-ref]]');
-  });
-
-  it('should replace long ref with long ref', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref', new: 'folder1/new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref]]',
-        }),
-      }),
-    ).toBe('[[folder1/new-test-ref]]');
-  });
-
-  it('should replace long ref + label with long ref + label', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref', new: 'folder1/new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref|Test Label]]',
-        }),
-      }),
-    ).toBe('[[folder1/new-test-ref|Test Label]]');
-  });
-
-  it('should replace long ref + label with short ref + label', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref|Test Label]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref|Test Label]]');
-  });
-
-  it('should replace short ref + label with long ref + label', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'folder1/new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref|Test Label]]',
-        }),
-      }),
-    ).toBe('[[folder1/new-test-ref|Test Label]]');
-  });
-
-  it('should replace short ref with short ref with unknown extension', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref.unknown' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref.unknown]]');
-  });
-
-  it('should replace short ref with unknown extension with short ref ', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref.unknown', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref.unknown]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref]]');
-  });
-
-  it('should replace long ref with short ref with unknown extension', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref', new: 'new-test-ref.unknown' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref.unknown]]');
-  });
-
-  it('should replace long ref with unknown extension with short ref ', async () => {
-    expect(
-      replaceRefs({
-        refs: [{ old: 'folder1/test-ref.unknown', new: 'new-test-ref' }],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[folder1/test-ref.unknown]]',
-        }),
-      }),
-    ).toBe('[[new-test-ref]]');
-  });
-
-  it('should not replace ref within code span', async () => {
-    const doc = await workspace.openTextDocument({
-      language: 'markdown',
-      content: '`[[test-ref]]`',
-    });
-
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: doc,
-      }),
-    ).toBe('`[[test-ref]]`');
-  });
-
-  it('should not replace ref within code span 2', async () => {
-    const content = `
-    Preceding text
-    \`[[test-ref]]\`
-    Following text
-    `;
-    const doc = await workspace.openTextDocument({
-      language: 'markdown',
-      content: content,
-    });
-
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: doc,
-      }),
-    ).toBe(content);
-  });
-
-  it('should not replace ref within fenced code block', async () => {
-    const initialContent = `
-    \`\`\`
-    Preceding text
-    [[test-ref]]
-    Following text
-    \`\`\`
-    `;
-
-    const doc = await workspace.openTextDocument({
-      language: 'markdown',
-      content: initialContent,
-    });
-
-    expect(
-      replaceRefs({
-        refs: [{ old: 'test-ref', new: 'new-test-ref' }],
-        document: doc,
-      }),
-    ).toBe(initialContent);
-  });
-
-  it('should replace multiple links at once', async () => {
-    expect(
-      replaceRefs({
-        refs: [
-          { old: 'test-ref', new: 'folder2/new-test-ref' },
-          { old: 'folder1/test-ref', new: 'folder2/new-test-ref' },
-        ],
-        document: await workspace.openTextDocument({
-          language: 'markdown',
-          content: '[[test-ref]] [[folder1/test-ref|Test Label]]',
-        }),
-      }),
-    ).toBe('[[folder2/new-test-ref]] [[folder2/new-test-ref|Test Label]]');
   });
 });
 
@@ -1651,7 +1105,7 @@ describe('findDanglingRefsByFsPath()', () => {
     );
     await createFile(`${name1}.md`);
 
-    const refsByFsPath = await findDanglingRefsByFsPath(getWorkspaceCache().markdownUris);
+    const refsByFsPath = await findDanglingRefsByFsPath(cache.getWorkspaceCache().markdownUris);
 
     expect(Object.keys(refsByFsPath)).toHaveLength(1);
     expect(Object.values(refsByFsPath)[0]).toEqual([
@@ -1671,21 +1125,21 @@ describe('findDanglingRefsByFsPath()', () => {
 
     const editor = await window.showTextDocument(doc);
 
-    const refsByFsPath = await findDanglingRefsByFsPath(getWorkspaceCache().markdownUris);
+    const refsByFsPath = await findDanglingRefsByFsPath(cache.getWorkspaceCache().markdownUris);
 
     expect(Object.keys(refsByFsPath)).toHaveLength(1);
     expect(Object.values(refsByFsPath)[0]).toEqual(['dangling-ref']);
 
     await editor.edit((edit) => edit.insert(new Position(1, 0), '[[dangling-ref2]]'));
 
-    const refsByFsPath2 = await findDanglingRefsByFsPath(getWorkspaceCache().markdownUris);
+    const refsByFsPath2 = await findDanglingRefsByFsPath(cache.getWorkspaceCache().markdownUris);
 
     expect(Object.keys(refsByFsPath2)).toHaveLength(1);
     expect(Object.values(refsByFsPath2)[0]).toEqual(['dangling-ref', 'dangling-ref2']);
 
     await editor.edit((edit) => edit.delete(new Range(new Position(0, 0), new Position(2, 0))));
 
-    expect(await findDanglingRefsByFsPath(getWorkspaceCache().markdownUris)).toEqual({});
+    expect(await findDanglingRefsByFsPath(cache.getWorkspaceCache().markdownUris)).toEqual({});
   });
 });
 
@@ -1758,5 +1212,179 @@ describe('getDirRelativeToWorkspace()', () => {
     const uri = await createFile(`/${dir1}/${dir2}/${name1}.md`);
 
     expect(getDirRelativeToWorkspace(uri)).toBe(path.join('/', dir1, dir2));
+  });
+});
+
+describe('extractRefsFromText()', () => {
+  const refRegExp = new RegExp('\\[\\[([^\\[\\]]+?)\\]\\]', 'g');
+
+  it('should extract ref from text', () => {
+    const text = `
+      [[hello-world]] [[adjacent-ref]]
+
+      [[any-ref]]
+    `;
+    expect(extractRefsFromText('hello-world', text)).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "line": Object {
+            "trailingText": "[[hello-world]] [[adjacent-ref]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 19,
+                "line": 1,
+              },
+              "start": Object {
+                "character": 8,
+                "line": 1,
+              },
+            },
+            "text": "hello-world",
+          },
+        },
+      ]
+    `);
+  });
+
+  it('should extract refs from text', () => {
+    const text = `
+      [[hello-world]] [[adjacent-ref]] [[new-world]]
+
+      [[any-ref]]
+    `;
+
+    expect(extractRefsFromText(['hello-world', 'new-world'], text)).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "line": Object {
+            "trailingText": "[[hello-world]] [[adjacent-ref]] [[new-world]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 19,
+                "line": 1,
+              },
+              "start": Object {
+                "character": 8,
+                "line": 1,
+              },
+            },
+            "text": "hello-world",
+          },
+        },
+        Object {
+          "line": Object {
+            "trailingText": "[[new-world]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 50,
+                "line": 1,
+              },
+              "start": Object {
+                "character": 41,
+                "line": 1,
+              },
+            },
+            "text": "new-world",
+          },
+        },
+      ]
+    `);
+  });
+
+  it('should not extract empty refs', () => {
+    const text = 'leading text [[]] trailing text';
+
+    expect(extractRefsFromText(refRegExp, text)).toHaveLength(0);
+  });
+
+  it('should not extract refs within fenced block', () => {
+    const text = `
+      \`\`\`
+      Preceding text
+      [[some-ref]]
+      Following text
+      \`\`\`
+    `;
+
+    expect(extractRefsFromText(refRegExp, text)).toHaveLength(0);
+  });
+
+  it('should not extract refs within code span', () => {
+    expect(extractRefsFromText('test-ref', '`[[test-ref]]`')).toHaveLength(0);
+  });
+
+  it('should extract refs from text using RegExp', () => {
+    const text = `
+      [[hello-world]] [[test-ref]]
+
+      some text here...
+
+      [[any-ref]]
+    `;
+
+    expect(extractRefsFromText(refRegExp, text)).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "line": Object {
+            "trailingText": "[[hello-world]] [[test-ref]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 19,
+                "line": 1,
+              },
+              "start": Object {
+                "character": 8,
+                "line": 1,
+              },
+            },
+            "text": "hello-world",
+          },
+        },
+        Object {
+          "line": Object {
+            "trailingText": "[[test-ref]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 32,
+                "line": 1,
+              },
+              "start": Object {
+                "character": 24,
+                "line": 1,
+              },
+            },
+            "text": "test-ref",
+          },
+        },
+        Object {
+          "line": Object {
+            "trailingText": "[[any-ref]]",
+          },
+          "ref": Object {
+            "position": Object {
+              "end": Object {
+                "character": 15,
+                "line": 5,
+              },
+              "start": Object {
+                "character": 8,
+                "line": 5,
+              },
+            },
+            "text": "any-ref",
+          },
+        },
+      ]
+    `);
   });
 });
