@@ -3146,10 +3146,10 @@ eslint-module-utils@^2.7.2:
     debug "^3.2.7"
     find-up "^2.1.0"
 
-eslint-plugin-folders@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-folders/-/eslint-plugin-folders-1.0.3.tgz#db98fccdb8d0453de82e70d8b8de0e2b6222b6c6"
-  integrity sha512-NqJffMuET/Zb4HHrxs61f6ur6pM5dsgy/SxuxCto98oVJjDKDUhE/O2OOOc06bjYIeVnGPOjgkAuxjk0+Gp4LA==
+eslint-plugin-folders@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-folders/-/eslint-plugin-folders-1.0.4.tgz#fe9b7ada5da72007d8f100db07c7195e66195f51"
+  integrity sha512-9X7kHriluurSkPr1L7guaN/T0xZZqtCbcCRT5kf2bLBMUqInr90Q3ioSNtJPbtA1bR3elTvQdSHiH3KXGUlTvA==
 
 eslint-plugin-import@^2.25.4:
   version "2.25.4"
