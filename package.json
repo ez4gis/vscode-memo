@@ -264,7 +264,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.4.0",
-    "@types/lodash.debounce": "^4.0.6",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.groupby": "^4.6.6",
     "@types/lodash.range": "^3.2.6",
     "@types/markdown-it": "^12.2.3",
